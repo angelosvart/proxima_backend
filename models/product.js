@@ -35,7 +35,7 @@ const productSchema = mongoose.Schema({
 		required: true,
 		min: 0,
 	},
-	offerPrice: {
+	previousPrice: {
 		type: Number,
 		min: 0,
 	},
@@ -47,11 +47,13 @@ const productSchema = mongoose.Schema({
 		type: Boolean,
 		required: true,
 	},
-	owner: {
+	store: {
 		type: mongoose.Schema.Types.ObjectId,
 		ref: "Store",
 		required: true,
 	},
 });
+
+productSchema.index({ "$**": "text" });
 
 exports.Product = mongoose.model("Product", productSchema);

@@ -40,13 +40,9 @@ const storeSchema = mongoose.Schema({
 			required: true,
 		},
 	],
-	products: {
-		type: Array,
-		default: [],
-	},
-	orders: {
-		type: Array,
-		default: [],
+	deliveryFee: {
+		type: Number,
+		required: true,
 	},
 });
 

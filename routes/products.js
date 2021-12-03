@@ -49,43 +49,49 @@ router.get(`/`, async (req, res) => {
 
 	let filter = {};
 	if (req.query.brand) {
-		filter = { ...filter, brand: req.query.brand };
+		filter = { ...filter, brand: req.query.brand.split(",") };
 	}
 	if (req.query.category) {
-		filter = { ...filter, category: req.query.category };
+		filter = { ...filter, category: req.query.category.split(",") };
 	}
 	if (req.query.subcategory) {
-		filter = { ...filter, subcategory: req.query.subcategory };
+		filter = { ...filter, subcategory: req.query.subcategory.split(",") };
 	}
 	if (req.query.color) {
-		filter = { ...filter, color: req.query.color };
+		filter = { ...filter, color: req.query.color.split(",") };
 	}
-	//arreglar
 	if (req.query.price) {
-		filter = { ...filter, price: req.query.price };
+		//hacer
 	}
 	if (req.query.isOffer) {
-		filter = { ...filter, isOffer: req.query.isOffer };
+		filter = { ...filter, isOffer: req.query.isOffer.split(",") };
 	}
 	if (req.query.store) {
-		filter = { ...filter, store: req.query.store };
+		filter = { ...filter, store: req.query.store.split(",") };
+	}
+	if (req.query.search) {
+		filter = {
+			...filter,
+			$text: { $search: req.query.search },
+		};
 	}
 
 	const productList = await Product.find(filter)
 		.populate({
-			path: "owner",
+			path: "store",
 			match: { postCodesServing: { $in: [req.query.postcode] } },
 			select: "postCodesServing name",
 		})
 		.populate("category", "name");
 
 	let filterByUserPostCode = productList.filter((product) => {
-		return product.owner;
+		return product.store;
 	});
 
 	if (!filterByUserPostCode) {
 		res.status(500).json({
 			success: false,
+			message: "Ha ocurrido un error, por favor inténtalo nuevamente.",
 		});
 	}
 
@@ -95,8 +101,8 @@ router.get(`/`, async (req, res) => {
 //Get product by id
 router.get(`/:id`, async (req, res) => {
 	const product = await Product.findById(req.params.id)
-		.populate("category", "name")
-		.populate("owner", "name postCodesServing");
+		.populate("category", "name path")
+		.populate("store", "name postCodesServing");
 
 	if (!product) {
 		res.status(500).json({
@@ -133,8 +139,8 @@ router.post(
 			});
 		}
 
-		const owner = await Store.findById(req.body.owner);
-		if (!owner) {
+		const store = await Store.findById(req.body.store);
+		if (!store) {
 			return res.status(400).json({
 				message: "La tienda no es válida.",
 			});
@@ -162,7 +168,7 @@ router.post(
 			offerPrice: req.body.offerPrice,
 			isOffer: req.body.isOffer,
 			isAvailable: req.body.isAvailable,
-			owner: req.body.owner,
+			store: req.body.store,
 		});
 
 		product = await product.save();
@@ -199,7 +205,7 @@ router.put(
 			});
 		}
 
-		if (req.user.storeId !== product.owner.toString()) {
+		if (req.user.storeId !== product.store.toString()) {
 			return res.status(401).json({
 				message: "El usuario no está autorizado para realizar esta acción.",
 			});
@@ -266,7 +272,7 @@ router.delete(
 	},
 	async (req, res) => {
 		const product = await Product.findById(req.params.id);
-		if (req.user.storeId !== product.owner.toString()) {
+		if (req.user.storeId !== product.store.toString()) {
 			return res.status(401).json({
 				message: "El usuario no está autorizado para realizar esta acción.",
 			});

@@ -9,6 +9,10 @@ const deliveryMethodSchema = mongoose.Schema({
 		type: String,
 		required: true,
 	},
+	infoMessage: {
+		type: String,
+		default: "",
+	},
 });
 
 exports.DeliveryMethod = mongoose.model("DeliveryMethod", deliveryMethodSchema);

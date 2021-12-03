@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const expressJwt = require("express-jwt");
 const { Product } = require("../models/product");
 
-//List of all orders for user or store
+//Get orders
 router.get(
 	"/",
 	expressJwt({
@@ -25,7 +25,7 @@ router.get(
 				.populate({
 					path: "products",
 					populate: {
-						path: "owner",
+						path: "store",
 						select: "name",
 					},
 					select: "image",
@@ -43,17 +43,17 @@ router.get(
 				.populate({
 					path: "products",
 					populate: {
-						path: "owner",
+						path: "store",
 						match: { _id: { $in: [req.user.storeId] } },
 						select: "_id",
 					},
-					select: "owner",
+					select: "store",
 				})
 				.sort({ created: -1 });
 
 			orderList = unfilteredList.reduce((array, current) => {
 				current.products.forEach((product) => {
-					if (product.owner) {
+					if (product.store) {
 						array.push(current);
 					}
 				});
@@ -68,7 +68,7 @@ router.get(
 //Create new order
 router.post(
 	"/",
-	expressJwt({
+	/*expressJwt({
 		secret: process.env.SECRET,
 		algorithms: ["HS256"],
 	}),
@@ -76,24 +76,21 @@ router.post(
 		return res.status(401).json({
 			message: "El usuario no está autorizado para realizar esta acción.",
 		});
-	},
+	},*/
 	async (req, res) => {
-		if (!req.user.userId) {
+		/*if (!req.user.userId) {
 			return res.status(401).json({
 				message: "El usuario no está autorizado para realizar esta acción.",
 			});
-		}
+		}*/
 		const products = req.body.products;
 		const subTotalPrices = await Promise.all(
 			products.map(async (product) => {
-				const productPrice = await Product.findById(product).select(
-					"price offerPrice"
+				const productPrice = await Product.findById(product.productId).select(
+					"price"
 				);
-				if (productPrice.offerPrice) {
-					return productPrice.offerPrice;
-				} else {
-					return productPrice.price;
-				}
+				product.payedPrice = productPrice.price;
+				return productPrice.price * product.quantity;
 			})
 		);
 
@@ -103,8 +100,10 @@ router.post(
 		let order = new Order({
 			deliveryMethod: req.body.deliveryMethod,
 			deliveryAddress: req.body.deliveryAddress,
+			name: req.body.name,
+			phone: req.body.phone,
 			paymentMethod: req.body.paymentMethod,
-			products: req.body.products,
+			products: [...req.body.products],
 			subtotalPrice: subTotalPrice,
 			deliveryFee: req.body.deliveryFee,
 			totalPrice: totalPrice,
@@ -129,7 +128,7 @@ router.post(
 //Get order by id
 router.get(
 	"/:id",
-	expressJwt({
+	/*expressJwt({
 		secret: process.env.SECRET,
 		algorithms: ["HS256"],
 	}),
@@ -137,20 +136,30 @@ router.get(
 		return res.status(401).json({
 			message: "El usuario no está autorizado para realizar esta acción.",
 		});
-	},
+	},*/
 	async (req, res) => {
+		/*if (!req.user.userId) {
+			return res.status(401).json({
+				message: "El usuario no está autorizado para realizar esta acción.",
+			});
+		}*/
 		let orderItem;
 
-		if (req.user.userId) {
-			orderItem = await Order.findById(req.params.id).populate({
+		/*if (req.user.userId) {*/
+		orderItem = await Order.findById(req.params.id)
+			.populate({
 				path: "products",
-				select: "image brand name",
 				populate: {
-					path: "owner",
-					select: "name phone email address postcode city",
+					path: "productId",
+					select: "image brand name store",
+					populate: {
+						path: "store",
+						select: "name phone email address postcode city",
+					},
 				},
-			});
-		}
+			})
+			.populate("deliveryMethod paymentMethod");
+		/*}
 
 		if (req.user.storeId) {
 			orderItem = await Order.findById(req.params.id)
@@ -163,58 +172,13 @@ router.get(
 					select: "name lastName phone address postcode city",
 				})
 				.populate("deliveryMethod paymentMethod", "name");
-		}
+		}*/
 
 		if (!orderItem) {
 			res.status(500).json({ success: false });
 		}
 
 		res.status(200).send(orderItem);
-	}
-);
-
-//Create new order
-router.post(
-	"/",
-	expressJwt({
-		secret: process.env.SECRET,
-		algorithms: ["HS256"],
-	}),
-	(err, req, res, next) => {
-		return res.status(401).json({
-			message: "El usuario no está autorizado para realizar esta acción.",
-		});
-	},
-	async (req, res) => {
-		if (!req.user.userId) {
-			return res.status(401).json({
-				message: "El usuario no está autorizado para realizar esta acción.",
-			});
-		}
-
-		let order = new Order({
-			deliveryMethod: req.body.deliveryMethod,
-			deliveryAddress: req.body.deliveryAddress,
-			paymentMethod: req.body.paymentMethod,
-			products: req.body.products,
-			subtotalPrice: req.body.subtotalPrice,
-			deliveryFee: req.body.deliveryFee,
-			totalPrice: req.body.totalPrice,
-			isPaid: req.body.isPaid,
-			user: req.body.user,
-		});
-
-		order = await order.save();
-
-		if (!order) {
-			return res
-				.status(400)
-				.send(
-					"El pedido no ha podido ser creado. Por favor intenta nuevamente."
-				);
-		}
-
-		res.status(200).send(order);
 	}
 );
 

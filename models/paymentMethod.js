@@ -9,6 +9,10 @@ const paymentMethodSchema = mongoose.Schema({
 		type: String,
 		required: true,
 	},
+	infoMessage: {
+		type: String,
+		default: "",
+	},
 });
 
 exports.PaymentMethod = mongoose.model("PaymentMethod", paymentMethodSchema);
