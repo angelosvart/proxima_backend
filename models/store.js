@@ -40,9 +40,9 @@ const storeSchema = mongoose.Schema({
 			required: true,
 		},
 	],
-	deliveryFee: {
-		type: Number,
-		required: true,
+	products: {
+		type: Array,
+		default: [],
 	},
 });
 

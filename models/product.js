@@ -52,6 +52,10 @@ const productSchema = mongoose.Schema({
 		ref: "Store",
 		required: true,
 	},
+	created: {
+		type: Date,
+		default: Date.now,
+	},
 });
 
 productSchema.index({ "$**": "text" });

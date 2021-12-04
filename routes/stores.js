@@ -1,4 +1,5 @@
 const { Store } = require("../models/store");
+const { Product } = require("../models/product");
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
@@ -17,9 +18,15 @@ router.get(`/`, async (req, res) => {
 	res.send(storeList);
 });
 
-//Get store by Id
+//Get store data and its products for dashboard
 router.get("/:id", async (req, res) => {
 	const store = await Store.findById(req.params.id).select("-password");
+
+	const productList = await Product.find({ store: req.params.id })
+		.select("brand image name price isOffer previousPrice")
+		.sort({ created: -1 });
+
+	store.products = productList;
 
 	if (!store) {
 		res.status(500).json({

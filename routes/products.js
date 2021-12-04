@@ -14,7 +14,7 @@ const FILETYPE = {
 };
 
 const storage = multer.diskStorage({
-	destination: (req, file, cb) => {
+	destination: function (req, file, cb) {
 		const isValidFile = FILETYPE[file.mimetype];
 		let uploadError = new Error("El tipo de imagen no es válido.");
 
@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
 		}
 		cb(uploadError, "public/images");
 	},
-	filename: (req, file, cb) => {
+	filename: function (req, file, cb) {
 		console.log(file);
 		const fileName = file.originalname
 			.split(" ")
@@ -82,7 +82,8 @@ router.get(`/`, async (req, res) => {
 			match: { postCodesServing: { $in: [req.query.postcode] } },
 			select: "postCodesServing name",
 		})
-		.populate("category", "name");
+		.populate("category", "name")
+		.sort({ created: -1 });
 
 	let filterByUserPostCode = productList.filter((product) => {
 		return product.store;
@@ -116,7 +117,7 @@ router.get(`/:id`, async (req, res) => {
 router.post(
 	`/`,
 	upload.single("image"),
-	expressJwt({
+	/*expressJwt({
 		secret: process.env.SECRET,
 		algorithms: ["HS256"],
 	}),
@@ -124,13 +125,13 @@ router.post(
 		return res.status(401).json({
 			message: "El usuario no está autorizado para realizar esta acción.",
 		});
-	},
+	},*/
 	async (req, res) => {
-		if (!req.user.storeId) {
+		/*if (!req.user.storeId) {
 			return res.status(401).json({
 				message: "El usuario no está autorizado para realizar esta acción.",
 			});
-		}
+		}*/
 
 		const category = await Category.findById(req.body.category);
 		if (!category) {
