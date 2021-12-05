@@ -5,7 +5,18 @@ const { Store } = require("../models/store");
 const router = express.Router();
 const expressJwt = require("express-jwt");
 const mongoose = require("mongoose");
-const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const formidable = require("formidable");
+
+cloudinary.config({
+	cloud_name: process.env.CLOUD_NAME,
+	api_key: process.env.API_KEY,
+	api_secret: process.env.API_SECRET,
+	secure: true,
+});
+
+/*const multer = require("multer");
+
 
 const FILETYPE = {
 	"image/png": "png",
@@ -38,6 +49,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+*/
 //Get all products by post code and filters
 router.get(`/`, async (req, res) => {
 	if (!req.query.postcode) {
@@ -116,7 +128,7 @@ router.get(`/:id`, async (req, res) => {
 //Add product
 router.post(
 	`/`,
-	upload.single("image"),
+	/*upload.single("image"),*/
 	/*expressJwt({
 		secret: process.env.SECRET,
 		algorithms: ["HS256"],
@@ -133,43 +145,65 @@ router.post(
 			});
 		}*/
 
-		const category = await Category.findById(req.body.category);
+		const form = new formidable.IncomingForm();
+		let formFields;
+
+		const handleForm = await new Promise(function (resolve, reject) {
+			form.parse(req, (err, fields, files) => {
+				formFields = fields;
+				cloudinary.uploader.upload(
+					files.image.filepath,
+					{
+						folder: "products",
+						eager: [{ width: 700, crop: "scale" }, { quality: "auto" }],
+					},
+					function (err, result) {
+						if (result) {
+							imagePath = result.url;
+							resolve(true);
+							return;
+						} else {
+							reject(false);
+							return;
+						}
+					}
+				);
+			});
+		});
+
+		if (!handleForm) {
+			res.status(400).json({
+				message: "Ha ocurrido un error al subir la imagen al servidor",
+			});
+		}
+
+		const category = await Category.findById(formFields.category);
 		if (!category) {
 			return res.status(400).json({
 				message: "La categoría no es válida.",
 			});
 		}
 
-		const store = await Store.findById(req.body.store);
+		const store = await Store.findById(formFields.store);
 		if (!store) {
 			return res.status(400).json({
 				message: "La tienda no es válida.",
 			});
 		}
 
-		const file = req.file;
-		if (!file) {
-			return res.status(400).json({
-				message: "No se ha seleccionado una imagen.",
-			});
-		}
-
-		const fileName = req.file.filename;
-		const basePath = `${req.protocol}://${req.get("host")}/public/images/`;
-
 		let product = new Product({
-			image: `${basePath}${fileName}`,
-			name: req.body.name,
-			brand: req.body.brand,
-			description: req.body.description,
-			category: req.body.category,
-			subcategory: req.body.subcategory,
-			color: req.body.color,
-			price: req.body.price,
-			offerPrice: req.body.offerPrice,
-			isOffer: req.body.isOffer,
-			isAvailable: req.body.isAvailable,
-			store: req.body.store,
+			image: imagePath,
+			name: formFields.name,
+			brand: formFields.brand,
+			description: formFields.description,
+			category: formFields.category,
+			subcategory: formFields.subcategory,
+			color: formFields.color,
+			price: formFields.price,
+			offerPrice: formFields.offerPrice,
+			isOffer: formFields.isOffer,
+			isAvailable: formFields.isAvailable,
+			store: formFields.store,
 		});
 
 		product = await product.save();
@@ -188,7 +222,7 @@ router.post(
 //Edit product
 router.put(
 	`/:id`,
-	upload.single("image"),
+	/*upload.single("image"),*/
 	expressJwt({
 		secret: process.env.SECRET,
 		algorithms: ["HS256"],

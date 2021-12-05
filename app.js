@@ -6,11 +6,10 @@ require("dotenv/config");
 
 app.use(cors());
 app.options("*", cors());
-app.use(express.urlencoded({ extended: true }))
+app.use(express.urlencoded({ extended: true }));
 
 //Middleware
 app.use(express.json());
-app.use("/public/images", express.static(__dirname + "/public/images"));
 
 //Routes
 const usersRoute = require("./routes/users");
