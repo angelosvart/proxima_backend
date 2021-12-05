@@ -6,6 +6,7 @@ require("dotenv/config");
 
 app.use(cors());
 app.options("*", cors());
+app.use(express.urlencoded({ extended: true }))
 
 //Middleware
 app.use(express.json());
@@ -17,7 +18,7 @@ const storesRoute = require("./routes/stores");
 const productsRoute = require("./routes/products");
 const categoriesRoute = require("./routes/categories");
 const deliveryMethodsRoute = require("./routes/deliveryMethods");
-const paymentMethodsRoute = require("./routes/paymentmethods");
+const paymentMethodsRoute = require("./routes/paymentMethods");
 const ordersRoute = require("./routes/orders");
 
 app.use(`${process.env.API_PATH}/users`, usersRoute);
