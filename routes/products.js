@@ -15,41 +15,6 @@ cloudinary.config({
 	secure: true,
 });
 
-/*const multer = require("multer");
-
-
-const FILETYPE = {
-	"image/png": "png",
-	"image/jpg": "jpg",
-	"image/jpeg": "jpeg",
-};
-
-const storage = multer.diskStorage({
-	destination: function (req, file, cb) {
-		const isValidFile = FILETYPE[file.mimetype];
-		let uploadError = new Error("El tipo de imagen no es válido.");
-
-		if (isValidFile) {
-			uploadError = null;
-		}
-		cb(uploadError, "public/images");
-	},
-	filename: function (req, file, cb) {
-		console.log(file);
-		const fileName = file.originalname
-			.split(" ")
-			.join("-")
-			.replace(".jpeg", "")
-			.replace(".jpg", "")
-			.replace(".png", "");
-		const extension = FILETYPE[file.mimetype];
-		cb(null, `${fileName}-${Date.now()}.${extension}`);
-	},
-});
-
-const upload = multer({ storage: storage });
-
-*/
 //Get all products by post code and filters
 router.get(`/`, async (req, res) => {
 	if (!req.query.postcode) {
@@ -125,11 +90,10 @@ router.get(`/:id`, async (req, res) => {
 	res.send(product);
 });
 
-//Add product
-router.post(
-	`/`,
-	/*upload.single("image"),*/
-	/*expressJwt({
+//Get products by store Id
+router.get(
+	"/store/:id",
+	expressJwt({
 		secret: process.env.SECRET,
 		algorithms: ["HS256"],
 	}),
@@ -137,16 +101,52 @@ router.post(
 		return res.status(401).json({
 			message: "El usuario no está autorizado para realizar esta acción.",
 		});
-	},*/
+	},
 	async (req, res) => {
-		/*if (!req.user.storeId) {
+		if (!req.user.storeId) {
 			return res.status(401).json({
 				message: "El usuario no está autorizado para realizar esta acción.",
 			});
-		}*/
+		}
+
+		const store = await Store.findById(req.params.id).select("-password");
+
+		const productList = await Product.find({ store: req.params.id })
+			.select("brand image name price isOffer previousPrice")
+			.sort({ created: -1 });
+
+		if (!store) {
+			res.status(500).json({
+				message: "La tienda no ha sido encontrada.",
+			});
+		}
+
+		res.status(200).send(productList);
+	}
+);
+
+//Add product
+router.post(
+	`/`,
+	expressJwt({
+		secret: process.env.SECRET,
+		algorithms: ["HS256"],
+	}),
+	(err, req, res, next) => {
+		return res.status(401).json({
+			message: "El usuario no está autorizado para realizar esta acción.",
+		});
+	},
+	async (req, res) => {
+		if (!req.user.storeId) {
+			return res.status(401).json({
+				message: "El usuario no está autorizado para realizar esta acción.",
+			});
+		}
 
 		const form = new formidable.IncomingForm();
 		let formFields;
+		let imagePath;
 
 		const handleForm = await new Promise(function (resolve, reject) {
 			form.parse(req, (err, fields, files) => {
@@ -222,7 +222,6 @@ router.post(
 //Edit product
 router.put(
 	`/:id`,
-	/*upload.single("image"),*/
 	expressJwt({
 		secret: process.env.SECRET,
 		algorithms: ["HS256"],
@@ -233,6 +232,50 @@ router.put(
 		});
 	},
 	async (req, res) => {
+		if (!req.user.storeId) {
+			return res.status(401).json({
+				message: "El usuario no está autorizado para realizar esta acción.",
+			});
+		}
+
+		const form = new formidable.IncomingForm();
+		let formFields;
+		let imagePath;
+
+		const handleForm = await new Promise(function (resolve, reject) {
+			form.parse(req, (err, fields, files) => {
+				formFields = fields;
+				if (files.image) {
+					cloudinary.uploader.upload(
+						files.image.filepath,
+						{
+							folder: "products",
+							eager: [{ width: 700, crop: "scale" }, { quality: "auto" }],
+						},
+						function (err, result) {
+							if (result) {
+								imagePath = result.url;
+								resolve(true);
+								return;
+							} else {
+								reject(false);
+								return;
+							}
+						}
+					);
+				} else {
+					resolve(true);
+					return;
+				}
+			});
+		});
+
+		if (!handleForm) {
+			res.status(400).json({
+				message: "Ha ocurrido un error al subir la imagen al servidor",
+			});
+		}
+
 		const product = await Product.findById(req.params.id);
 		if (!product) {
 			return res.status(400).json({
@@ -240,56 +283,45 @@ router.put(
 			});
 		}
 
-		if (req.user.storeId !== product.store.toString()) {
+		if (formFields.store !== product.store.toString()) {
 			return res.status(401).json({
 				message: "El usuario no está autorizado para realizar esta acción.",
 			});
 		}
 
-		const category = await Category.findById(req.body.category);
+		const category = await Category.findById(formFields.category);
 		if (!category) {
 			return res.status(400).json({
 				message: "La categoría no es válida.",
 			});
 		}
 
-		const file = req.file;
-		let imagePath;
-
-		if (file) {
-			const fileName = req.file.filename;
-			const basePath = `${req.protocol}://${req.get("host")}/public/images/`;
-			imagePath = `${basePath}${fileName}`;
-		} else {
-			imagePath = product.image;
-		}
-
-		const newProduct = await Product.findByIdAndUpdate(
+		const editedProduct = await Product.findByIdAndUpdate(
 			req.params.id,
 			{
 				image: imagePath,
-				name: req.body.name,
-				brand: req.body.brand,
-				description: req.body.description,
-				category: req.body.category,
-				subcategory: req.body.subcategory,
-				color: req.body.color,
-				price: req.body.price,
-				offerPrice: req.body.offerPrice,
-				isOffer: req.body.isOffer,
-				isAvailable: req.body.isAvailable,
+				name: formFields.name,
+				brand: formFields.brand,
+				description: formFields.description,
+				category: formFields.category,
+				subcategory: formFields.subcategory,
+				color: formFields.color,
+				price: formFields.price,
+				offerPrice: formFields.offerPrice,
+				isOffer: formFields.isOffer,
+				isAvailable: formFields.isAvailable,
 			},
 			{ new: true }
 		);
 
-		if (!newProduct) {
+		if (!editedProduct) {
 			return res.status(500).json({
 				message:
 					"El producto no ha podido ser editado. Por favor intenta nuevamente.",
 			});
 		}
 
-		res.status(200).send(newProduct);
+		res.status(200).send(editedProduct);
 	}
 );
 

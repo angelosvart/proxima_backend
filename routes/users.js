@@ -31,15 +31,28 @@ router.get("/:id", async (req, res) => {
 
 //Create new user
 router.post(`/register`, async (req, res) => {
+	const password = await req.body.clientUser.password;
+	const hashSync = await bcrypt.hashSync(password, 10);
+
+	const checkEmail = await User.findOne({
+		email: req.body.clientUser.email,
+	});
+
+	if (checkEmail) {
+		return res
+			.status(409)
+			.send("Ya existe una cuenta con este correo electrónico.");
+	}
+
 	let user = new User({
-		name: req.body.name,
-		lastName: req.body.lastName,
-		email: req.body.email,
-		phone: req.body.phone,
-		address: req.body.address,
-		postCode: req.body.postCode,
-		city: req.body.city,
-		password: bcrypt.hashSync(req.body.password, 10),
+		name: req.body.clientUser.name,
+		lastName: req.body.clientUser.lastName,
+		email: req.body.clientUser.email,
+		phone: req.body.clientUser.phone,
+		address: req.body.clientUser.address,
+		postCode: req.body.clientUser.postCode,
+		city: req.body.clientUser.city,
+		password: hashSync,
 	});
 
 	user = await user.save();
@@ -56,7 +69,7 @@ router.post(`/register`, async (req, res) => {
 		},
 		process.env.SECRET,
 		{
-			expiresIn: "1d",
+			expiresIn: "1w",
 		}
 	);
 
@@ -84,7 +97,7 @@ router.post("/login", async (req, res) => {
 			},
 			process.env.SECRET,
 			{
-				expiresIn: "1d",
+				expiresIn: "1w",
 			}
 		);
 
@@ -120,8 +133,8 @@ router.put(
 		const existingUser = await User.findById(req.params.id);
 		let newPassword;
 
-		if (req.body.password) {
-			newPassword = bcrypt.hashSync(req.body.password, 10);
+		if (req.body.clientUser.password) {
+			newPassword = await bcrypt.hashSync(req.body.clientUser.password, 10);
 		} else {
 			newPassword = existingUser.password;
 		}
@@ -129,13 +142,13 @@ router.put(
 		const user = await User.findByIdAndUpdate(
 			req.params.id,
 			{
-				name: req.body.name,
-				lastName: req.body.lastName,
-				email: req.body.email,
-				phone: req.body.phone,
-				address: req.body.address,
-				postCode: req.body.postCode,
-				city: req.body.city,
+				name: req.body.clientUser.name,
+				lastName: req.body.clientUser.lastName,
+				email: req.body.clientUser.email,
+				phone: req.body.clientUser.phone,
+				address: req.body.clientUser.address,
+				postCode: req.body.clientUser.postCode,
+				city: req.body.clientUser.city,
 				password: newPassword,
 			},
 			{ new: true }
@@ -149,7 +162,7 @@ router.put(
 				);
 		}
 
-		res.send(user);
+		res.status(200).send({ user: user });
 	}
 );
 

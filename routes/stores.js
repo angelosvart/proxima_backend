@@ -18,36 +18,60 @@ router.get(`/`, async (req, res) => {
 	res.send(storeList);
 });
 
-//Get store data and its products for dashboard
-router.get("/:id", async (req, res) => {
-	const store = await Store.findById(req.params.id).select("-password");
-
-	const productList = await Product.find({ store: req.params.id })
-		.select("brand image name price isOffer previousPrice")
-		.sort({ created: -1 });
-
-	store.products = productList;
-
-	if (!store) {
-		res.status(500).json({
-			message: "La tienda no ha sido encontrada.",
+//Get store by Id
+router.get(
+	"/:id",
+	expressJwt({
+		secret: process.env.SECRET,
+		algorithms: ["HS256"],
+	}),
+	(err, req, res, next) => {
+		return res.status(401).json({
+			message: "El usuario no está autorizado para realizar esta acción.",
 		});
+	},
+	async (req, res) => {
+		if (req.user.storeId !== req.params.id) {
+			return res.status(401).json({
+				message: "El usuario no está autorizado para realizar esta acción.",
+			});
+		}
+		const store = await Store.findById(req.params.id).select("-password");
+
+		if (!store) {
+			res.status(500).json({
+				message: "La cuenta no ha sido encontrada.",
+			});
+		}
+		res.status(200).send(store);
 	}
-	res.status(200).send(store);
-});
+);
 
 //Create new store
 router.post(`/register`, async (req, res) => {
+	const password = await req.body.storeUser.password;
+	const hashSync = await bcrypt.hashSync(password, 10);
+
+	const checkEmail = await Store.findOne({
+		email: req.body.storeUser.email,
+	});
+
+	if (checkEmail) {
+		return res
+			.status(409)
+			.send("Ya existe una cuenta con este correo electrónico.");
+	}
+
 	let store = new Store({
-		name: req.body.name,
-		contactName: req.body.contactName,
-		email: req.body.email,
-		phone: req.body.phone,
-		address: req.body.address,
-		postCode: req.body.postCode,
-		city: req.body.city,
-		postCodesServing: req.body.postCodesServing,
-		password: bcrypt.hashSync(req.body.password, 10),
+		name: req.body.storeUser.name,
+		contactName: req.body.storeUser.contactName,
+		email: req.body.storeUser.email,
+		phone: req.body.storeUser.phone,
+		address: req.body.storeUser.address,
+		postCode: req.body.storeUser.postCode,
+		city: req.body.storeUser.city,
+		postCodesServing: req.body.storeUser.postCodesServing,
+		password: hashSync,
 	});
 
 	store = await store.save();
@@ -64,7 +88,7 @@ router.post(`/register`, async (req, res) => {
 		},
 		process.env.SECRET,
 		{
-			expiresIn: "1d",
+			expiresIn: "1w",
 		}
 	);
 
@@ -92,7 +116,7 @@ router.post("/login", async (req, res) => {
 			},
 			process.env.SECRET,
 			{
-				expiresIn: "1d",
+				expiresIn: "1w",
 			}
 		);
 
