@@ -152,8 +152,8 @@ router.put(
 		const existingStore = await Store.findById(req.params.id);
 		let newPassword;
 
-		if (req.body.password) {
-			newPassword = bcrypt.hashSync(req.body.password, 10);
+		if (req.body.storeUser.password) {
+			newPassword = await bcrypt.hashSync(req.body.storeUser.password, 10);
 		} else {
 			newPassword = existingStore.password;
 		}
@@ -161,15 +161,15 @@ router.put(
 		const store = await Store.findByIdAndUpdate(
 			req.params.id,
 			{
-				name: req.body.name,
-				contactName: req.body.contactName,
-				email: req.body.email,
-				phone: req.body.phone,
-				address: req.body.address,
-				postCode: req.body.postCode,
-				city: req.body.city,
+				name: req.body.storeUser.name,
+				contactName: req.body.storeUser.contactName,
+				email: req.body.storeUser.email,
+				phone: req.body.storeUser.phone,
+				address: req.body.storeUser.address,
+				postCode: req.body.storeUser.postCode,
+				city: req.body.storeUser.city,
 				password: newPassword,
-				postCodesServing: req.body.postCodesServing,
+				postCodesServing: req.body.storeUser.postCodesServing,
 			},
 			{ new: true }
 		);
@@ -182,7 +182,7 @@ router.put(
 				);
 		}
 
-		res.send(store);
+		res.status(200).send({ store: store });
 	}
 );
 
