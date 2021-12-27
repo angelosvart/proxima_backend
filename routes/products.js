@@ -24,7 +24,8 @@ router.get(`/`, async (req, res) => {
 		});
 	}
 
-	let filter = {};
+	let filter = { isAvailable: true };
+
 	if (req.query.brand) {
 		filter = { ...filter, brand: req.query.brand.split(",") };
 	}
@@ -36,9 +37,6 @@ router.get(`/`, async (req, res) => {
 	}
 	if (req.query.color) {
 		filter = { ...filter, color: req.query.color.split(",") };
-	}
-	if (req.query.price) {
-		//hacer
 	}
 	if (req.query.isOffer) {
 		filter = { ...filter, isOffer: req.query.isOffer.split(",") };
@@ -56,24 +54,27 @@ router.get(`/`, async (req, res) => {
 	const productList = await Product.find(filter)
 		.populate({
 			path: "store",
-			match: { postCodesServing: { $in: [req.query.postcode] } },
+			match: {
+				postCodesServing: { $in: [req.query.postcode] },
+			},
 			select: "postCodesServing name",
 		})
+
 		.populate("category", "name")
 		.sort({ created: -1 });
 
-	let filterByUserPostCode = productList.filter((product) => {
+	let productListFiltered = productList.filter((product) => {
 		return product.store;
 	});
 
-	if (!filterByUserPostCode) {
+	if (!productListFiltered) {
 		res.status(500).json({
 			success: false,
 			message: "Ha ocurrido un error, por favor inténtalo nuevamente.",
 		});
 	}
 
-	res.status(200).send(filterByUserPostCode);
+	res.status(200).send(productListFiltered);
 });
 
 //Get product by id

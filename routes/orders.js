@@ -21,14 +21,13 @@ router.get(
 		let orderList;
 		if (req.user.userId) {
 			orderList = await Order.find({ user: req.user.userId })
-				.select("created")
+				.select("created orderNumber")
 				.populate({
 					path: "products",
 					populate: {
-						path: "store",
-						select: "name",
+						path: "productId",
+						select: "image",
 					},
-					select: "image",
 				})
 				.sort({ created: -1 });
 		}
@@ -68,7 +67,7 @@ router.get(
 //Create new order
 router.post(
 	"/",
-	/*expressJwt({
+	expressJwt({
 		secret: process.env.SECRET,
 		algorithms: ["HS256"],
 	}),
@@ -76,13 +75,13 @@ router.post(
 		return res.status(401).json({
 			message: "El usuario no está autorizado para realizar esta acción.",
 		});
-	},*/
+	},
 	async (req, res) => {
-		/*if (!req.user.userId) {
+		if (!req.user.userId) {
 			return res.status(401).json({
 				message: "El usuario no está autorizado para realizar esta acción.",
 			});
-		}*/
+		}
 		const products = req.body.products;
 		const subTotalPrices = await Promise.all(
 			products.map(async (product) => {
@@ -128,7 +127,7 @@ router.post(
 //Get order by id
 router.get(
 	"/:id",
-	/*expressJwt({
+	expressJwt({
 		secret: process.env.SECRET,
 		algorithms: ["HS256"],
 	}),
@@ -136,30 +135,30 @@ router.get(
 		return res.status(401).json({
 			message: "El usuario no está autorizado para realizar esta acción.",
 		});
-	},*/
+	},
 	async (req, res) => {
-		/*if (!req.user.userId) {
+		if (!req.user.userId) {
 			return res.status(401).json({
 				message: "El usuario no está autorizado para realizar esta acción.",
 			});
-		}*/
+		}
 		let orderItem;
 
-		/*if (req.user.userId) {*/
-		orderItem = await Order.findById(req.params.id)
-			.populate({
-				path: "products",
-				populate: {
-					path: "productId",
-					select: "image brand name store",
+		if (req.user.userId) {
+			orderItem = await Order.findById(req.params.id)
+				.populate({
+					path: "products",
 					populate: {
-						path: "store",
-						select: "name phone email address postcode city",
+						path: "productId",
+						select: "image brand name store",
+						populate: {
+							path: "store",
+							select: "name phone email address postcode city",
+						},
 					},
-				},
-			})
-			.populate("deliveryMethod paymentMethod");
-		/*}
+				})
+				.populate("deliveryMethod paymentMethod");
+		}
 
 		if (req.user.storeId) {
 			orderItem = await Order.findById(req.params.id)
@@ -172,7 +171,7 @@ router.get(
 					select: "name lastName phone address postcode city",
 				})
 				.populate("deliveryMethod paymentMethod", "name");
-		}*/
+		}
 
 		if (!orderItem) {
 			res.status(500).json({ success: false });
