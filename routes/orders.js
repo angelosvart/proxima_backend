@@ -33,8 +33,8 @@ router.get(
 		}
 
 		if (req.user.storeId) {
-			unfilteredList = await Order.find()
-				.select("created")
+			let unfilteredList = await Order.find()
+				.select("created isDelivered isPaid orderNumber")
 				.populate({
 					path: "deliveryMethod",
 					select: "name",
@@ -42,17 +42,16 @@ router.get(
 				.populate({
 					path: "products",
 					populate: {
-						path: "store",
-						match: { _id: { $in: [req.user.storeId] } },
-						select: "_id",
+						path: "productId",
+						match: { store: { $in: [req.user.storeId] } },
+						select: "store",
 					},
-					select: "store",
 				})
 				.sort({ created: -1 });
 
 			orderList = unfilteredList.reduce((array, current) => {
 				current.products.forEach((product) => {
-					if (product.store) {
+					if (product.productId) {
 						array.push(current);
 					}
 				});
@@ -88,7 +87,7 @@ router.post(
 				const productPrice = await Product.findById(product.productId).select(
 					"price"
 				);
-				product.payedPrice = productPrice.price;
+				product.paidPrice = productPrice.price;
 				return productPrice.price * product.quantity;
 			})
 		);
@@ -137,11 +136,6 @@ router.get(
 		});
 	},
 	async (req, res) => {
-		if (!req.user.userId) {
-			return res.status(401).json({
-				message: "El usuario no está autorizado para realizar esta acción.",
-			});
-		}
 		let orderItem;
 
 		if (req.user.userId) {
@@ -164,7 +158,10 @@ router.get(
 			orderItem = await Order.findById(req.params.id)
 				.populate({
 					path: "products",
-					select: "image brand name",
+					populate: {
+						path: "productId",
+						select: "image brand name",
+					},
 				})
 				.populate({
 					path: "user",
@@ -203,9 +200,26 @@ router.put(
 					isPaid: req.body.isPaid,
 				},
 				{ new: true }
-			);
+			)
+				.populate({
+					path: "products",
+					populate: {
+						path: "productId",
+						select: "image brand name",
+					},
+				})
+				.populate({
+					path: "user",
+					select: "name lastName phone address postcode city",
+				})
+				.populate("deliveryMethod paymentMethod", "name");
+
 			if (!order) {
-				res.status(400).send("The order can't be modified. Please try again.");
+				res
+					.status(400)
+					.send(
+						"No se puede modificar el pedido, por favor inténtalo nuevamente."
+					);
 			}
 
 			res.status(200).send(order);

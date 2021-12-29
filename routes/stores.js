@@ -6,18 +6,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const expressJwt = require("express-jwt");
 
-//List of all stores
-router.get(`/`, async (req, res) => {
-	const storeList = await Store.find().select("-password");
-
-	if (!storeList) {
-		res.status(500).json({
-			success: false,
-		});
-	}
-	res.send(storeList);
-});
-
 //Get store by Id
 router.get(
 	"/:id",

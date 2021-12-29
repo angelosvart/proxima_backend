@@ -44,7 +44,7 @@ const orderSchema = mongoose.Schema({
 				required: true,
 			},
 			quantity: { type: Number, required: true },
-			payedPrice: { type: Number, required: true },
+			paidPrice: { type: Number, required: true },
 		},
 	],
 	subtotalPrice: {

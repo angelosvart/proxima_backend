@@ -34,10 +34,6 @@ const userSchema = mongoose.Schema({
 		type: String,
 		required: true,
 	},
-	orders: {
-		type: Array,
-		default: [],
-	},
 });
 
 userSchema.set("toJSON", {

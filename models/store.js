@@ -40,10 +40,6 @@ const storeSchema = mongoose.Schema({
 			required: true,
 		},
 	],
-	products: {
-		type: Array,
-		default: [],
-	},
 });
 
 exports.Store = mongoose.model("Store", storeSchema);
