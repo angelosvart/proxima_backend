@@ -28,6 +28,8 @@ app.use(`${process.env.API_PATH}/deliverymethods`, deliveryMethodsRoute);
 app.use(`${process.env.API_PATH}/paymentmethods`, paymentMethodsRoute);
 app.use(`${process.env.API_PATH}/orders`, ordersRoute);
 
+const PORT = process.env.PORT || 3000;
+
 //DB
 mongoose
 	.connect(process.env.DB_CONNECTION, {
@@ -43,6 +45,6 @@ mongoose
 	});
 
 //Server
-app.listen(3000, () => {
-	console.log("Server started in http://localhost:3000");
+app.listen(PORT, () => {
+	console.log("Server started");
 });
