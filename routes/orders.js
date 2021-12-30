@@ -92,7 +92,8 @@ router.post(
 			})
 		);
 
-		const subTotalPrice = subTotalPrices.reduce((a, b) => a + b, 0);
+		let subTotalPrice = subTotalPrices.reduce((a, b) => a + b, 0);
+		subTotalPrice = Math.round((subTotalPrice + Number.EPSILON) * 100) / 100;
 		const totalPrice = subTotalPrice + req.body.deliveryFee;
 
 		let order = new Order({
