@@ -197,7 +197,7 @@ router.put(
 				req.params.id,
 				{
 					isDelivered: req.body.isDelivered,
-					delivered: req.body.isDelivered ? Date.now() : null,
+					delivered: req.body.isDelivered ? Date.now() : delivered,
 					isPaid: req.body.isPaid,
 				},
 				{ new: true }
