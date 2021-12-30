@@ -5,29 +5,35 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const expressJwt = require("express-jwt");
 
-//List of all users
-router.get(`/`, async (req, res) => {
-	const userList = await User.find().select("-password");
-
-	if (!userList) {
-		res.status(500).json({
-			success: false,
-		});
-	}
-	res.status(200).send(userList);
-});
-
 //Get user by Id
-router.get("/:id", async (req, res) => {
-	const user = await User.findById(req.params.id).select("-password");
-
-	if (!user) {
-		res.status(500).json({
-			message: "La cuenta no ha sido encontrada.",
+router.get(
+	"/:id",
+	expressJwt({
+		secret: process.env.SECRET,
+		algorithms: ["HS256"],
+	}),
+	(err, req, res, next) => {
+		return res.status(401).json({
+			message: "El usuario no está autorizado para realizar esta acción.",
 		});
+	},
+	async (req, res) => {
+		if (req.user.userId !== req.params.id) {
+			return res.status(401).json({
+				message: "El usuario no está autorizado para realizar esta acción.",
+			});
+		}
+
+		const user = await User.findById(req.params.id).select("-password");
+
+		if (!user) {
+			res.status(500).json({
+				message: "La cuenta no ha sido encontrada.",
+			});
+		}
+		res.status(200).send(user);
 	}
-	res.status(200).send(user);
-});
+);
 
 //Create new user
 router.post(`/register`, async (req, res) => {
